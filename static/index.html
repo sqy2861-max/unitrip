@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniTrip - 大学生智能旅行规划助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+
+    <!-- 顶部导航栏 -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 flex items-center justify-center font-bold text-lg text-white shadow-lg shadow-indigo-500/30">
+                U
+            </div>
+            <span class="font-bold text-xl tracking-wide bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">UniTrip</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">大学生旅游规划 Agent</span>
+        </div>
+        <div class="text-xs text-slate-400">
+            🏨 动态高德检索 • 🏛️ 纯正地标景点 • 🍜 真实口碑三餐
+        </div>
+    </header>
+
+    <!-- 主体区域 -->
+    <main class="max-w-[1600px] mx-auto p-4 flex gap-4 min-h-[calc(100vh-4rem)]">
+        
+        <!-- 左侧：参数输入 -->
+        <aside class="w-[380px] shrink-0 flex flex-col gap-4 sticky top-20 h-fit">
+            <div class="bg-slate-800/50 border border-slate-800 rounded-2xl p-5 backdrop-blur-xl shadow-2xl space-y-4">
+                <h2 class="text-base font-semibold text-slate-100 flex items-center gap-2">
+                    <span class="text-sky-400">✦</span> 设定旅行需求
+                </h2>
+
+                <form id="planForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">目的地 <span class="text-red-400">*必填</span></label>
+                        <input type="text" id="dest" value="" placeholder="例如：邯郸、成都、西安" class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">天数 <span class="text-red-400">*必填</span></label>
+                            <input type="number" id="days" value="" placeholder="如：3" min="1" max="7" class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">同行人数</label>
+                            <input type="number" id="people" value="" placeholder="如：2" min="1" class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">人均预算 (元)</label>
+                        <input type="number" id="budget" value="" placeholder="如：1000" class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">游玩节奏 <span class="text-red-400">*必填</span></label>
+                        <select id="pace" class="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                            <option value="" disabled selected>-- 请选择游玩节奏 --</option>
+                            <option value="rush">⚡ 特种兵 (早7点半/高密度打卡)</option>
+                            <option value="normal">☕ 适中 (早8点半/平衡体验)</option>
+                            <option value="relaxed">🌿 轻松 (早9点半/拒绝赶路)</option>
+                        </select>
+                    </div>
+
+                    <button type="button" onclick="generatePlan()" id="submitBtn" class="w-full mt-3 py-3 bg-gradient-to-r from-indigo-500 to-sky-500 hover:from-indigo-600 hover:to-sky-600 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/25 transition transform active:scale-[0.98]">
+                        生成智能定制路书
+                    </button>
+                </form>
+
+                <!-- 预算看板 -->
+                <div id="budgetCard" class="p-4 bg-slate-900/60 border border-slate-700/40 rounded-xl space-y-2.5 hidden">
+                    <div class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                        <span>💰 预算精细评估</span>
+                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">高性价比</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">预计总花费 (含食宿交通)</span>
+                        <span id="totalCost" class="font-bold text-slate-100">￥0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-400">预计人均花费</span>
+                        <span id="perPersonCost" class="font-bold text-indigo-400">￥0 /人</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧：展示区 -->
+        <section class="flex-1 bg-slate-800/40 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+            <div id="rightContent" class="space-y-6">
+                <!-- 初始引导页 -->
+                <div class="flex flex-col items-center justify-center text-center py-32 space-y-4">
+                    <div class="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl mx-auto flex items-center justify-center text-2xl text-indigo-400 shadow-inner">
+                        🗺️
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-200">高德动态检索引擎已就绪</h3>
+                    <p class="text-xs text-slate-400 max-w-md leading-relaxed">
+                        输入任意城市，系统将调用高德API抓取真实地点，并根据您的“游玩节奏”动态生成最合理的时间轴！
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // 渲染动态图片
+        const getCoverImg = (city) => {
+            const images = {
+                "北京": "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?q=80&w=1000&auto=format&fit=crop",
+                "西安": "https://images.unsplash.com/photo-1548013146-72479768bada?q=80&w=1000&auto=format&fit=crop",
+                "成都": "https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1000&auto=format&fit=crop"
+            };
+            const key = Object.keys(images).find(k => city.includes(k));
+            return key ? images[key] : "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=1000&auto=format&fit=crop";
+        };
+
+        // 餐厅识别（一票否决制）
+        function isRestaurant(poi) {
+            const typeStr = (poi.type || '');
+            const nameStr = (poi.name || '');
+            if (typeStr.includes('餐饮') || typeStr.includes('美食')) return true;
+            const foodKeywords = ['馄饨', '面馆', '小吃', '火锅', '烧烤', '烤肉', '酒家', '酒楼', '饭店', '食府', '饭庄', '餐厅', '菜馆', '茶餐厅', '咖啡', '奶茶', '烘焙', '水饺', '包子', '烤鸭', '肉', '串', '吧', '夜市', '排档'];
+            return foodKeywords.some(k => nameStr.includes(k));
+        }
+
+        // 景点识别（严选制）
+        function isAttraction(poi) {
+            const typeStr = (poi.type || '');
+            const nameStr = (poi.name || '');
+            if (typeStr.includes('休闲娱乐') || typeStr.includes('公司企业') || nameStr.includes('剧本') || nameStr.includes('密室') || nameStr.includes('网吧')) return false;
+            const spotKeywords = ['风景名胜', '公园', '博物馆', '纪念馆', '美术馆', '古迹', '寺', '庙', '宫', '塔', '城', '街', '巷', '胡同', '广场', '遗址', '楼'];
+            return spotKeywords.some(k => typeStr.includes(k) || nameStr.includes(k));
+        }
+
+        // 景点权重打分（越有名分数越高）
+        function calculateAttractionScore(poi) {
+            let score = 0;
+            const nameStr = poi.name || '';
+            const rating = parseFloat(poi.rating || poi.biz_ext?.rating || 0);
+            score += rating * 10;
+            const coreKeywords = ['博物馆', '博物院', '遗址', '国家级', '风景区', '古城', '古镇', '广场', '公园', '寺', '塔', '宫', '长城', '故宫'];
+            if (coreKeywords.some(k => nameStr.includes(k))) score += 50;
+            return score;
+        }
+
+        async function generatePlan() {
+            const destInput = document.getElementById('dest').value.trim();
+            const daysInput = document.getElementById('days').value.trim();
+            const paceInput = document.getElementById('pace').value.trim();
+            const people = parseInt(document.getElementById('people').value) || 1;
+
+            if (!destInput || !daysInput || !paceInput) {
+                alert("【Agent 提示】目的地、出行天数与游玩节奏为必填字段！");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = `引擎正在全网检索 ${destInput} 真实数据...`;
+            btn.disabled = true;
+
+            const payload = {
+                needs: { days: parseInt(daysInput), people: people, pace: paceInput },
+                destination: { name: destInput }
+            };
+
+            try {
+                const res = await fetch('/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) throw new Error('后端请求失败');
+                const data = await res.json();
+                renderRightPanel(data, destInput, parseInt(daysInput), people, paceInput);
+            } catch (err) {
+                console.error(err);
+                alert('生成失败：请检查后端是否运行，且成功返回了数据');
+            } finally {
+                btn.innerText = '生成智能定制路书';
+                btn.disabled = false;
+            }
+        }
+
+        // 核心：根据游玩节奏生成不同的时间轴配置
+        function getScheduleConfig(pace) {
+            if (pace === 'rush') {
+                return {
+                    startTime: "07:30", // 特种兵早点出发
+                    spotsCount: 4,      // 一天打卡4个景点
+                    duration: "1.5小时", // 每个景点停留短
+                    times: ["07:30", "08:15", "10:15", "12:30", "13:30", "15:15", "18:30"] // 时间点非常紧凑
+                };
+            } else if (pace === 'relaxed') {
+                return {
+                    startTime: "09:30",
+                    spotsCount: 2,      // 轻松游只去2个经典的地方
+                    duration: "3.5小时",
+                    times: ["09:30", "10:30", "13:00", "14:30", "18:00"] // 早上睡到自然醒
+                };
+            } else { // normal 适中
+                return {
+                    startTime: "08:30",
+                    spotsCount: 3,      // 适中游去3个地方
+                    duration: "2.5小时",
+                    times: ["08:30", "09:15", "12:00", "13:30", "16:00", "18:30"]
+                };
+            }
+        }
+
+        function renderRightPanel(data, dest, days, people, pace) {
+            const container = document.getElementById('rightContent');
+            const coverImg = getCoverImg(dest);
+            const paceMap = { 'rush': '⚡ 特种兵', 'normal': '☕ 适中', 'relaxed': '🌿 轻松' };
+            
+            // 获取时间轴配置
+            const config = getScheduleConfig(pace);
+
+            const totalCost = days * people * 260;
+            const perPerson = Math.round(totalCost / people);
+
+            document.getElementById('budgetCard').classList.remove('hidden');
+            document.getElementById('totalCost').innerText = `￥${totalCost}`;
+            document.getElementById('perPersonCost').innerText = `￥${perPerson} /人`;
+
+            let html = `
+                <div class="relative rounded-2xl overflow-hidden border border-slate-700/60 shadow-xl bg-slate-900/60">
+                    <div class="h-44 w-full overflow-hidden relative">
+                        <img src="${coverImg}" alt="${dest}" class="w-full h-full object-cover filter brightness-75">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+                        <div class="absolute bottom-4 left-6 right-6 flex items-end justify-between">
+                            <div>
+                                <span class="text-xs px-2.5 py-1 rounded-full bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 font-medium backdrop-blur-md">${paceMap[pace]}</span>
+                                <h2 class="text-2xl font-bold text-white mt-1.5">${dest} · 高德实况智能路书</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-2xl p-4 shadow-lg flex items-start gap-3 text-xs mb-6">
+                    <span class="text-xl">🏨</span>
+                    <div class="space-y-1.5">
+                        <div class="font-bold text-indigo-300 text-sm">住宿起点建议</div>
+                        <div class="text-slate-300 leading-relaxed">已为您规划基于 ${dest} 核心交通枢纽（如市中心地铁站附近）的住宿。</div>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between border-l-2 border-indigo-500 pl-2.5">
+                        <h3 class="text-sm font-bold text-slate-100">📅 每日高德真实数据时间轴</h3>
+                        <span class="text-[11px] text-emerald-400 font-medium">✨ 已适配「${paceMap[pace]}」节奏</span>
+                    </div>
+            `;
+
+            if (data.days && data.days.length > 0) {
+                data.days.forEach((d) => {
+                    const stops = d.stops || [];
+                    
+                    let attractions = [];
+                    let restaurants = [];
+                    
+                    stops.forEach(stop => {
+                        if (isRestaurant(stop)) {
+                            restaurants.push(stop);
+                        } else if (isAttraction(stop)) {
+                            stop.score = calculateAttractionScore(stop);
+                            attractions.push(stop);
+                        }
+                    });
+
+                    // 按知名度分数排序
+                    attractions.sort((a, b) => b.score - a.score);
+
+                    const bf = restaurants[0] ? `${restaurants[0].name}` : '附近特色早点';
+                    const lc = restaurants[1] ? `${restaurants[1].name}` : '周边特色午餐';
+                    const dn = restaurants[2] ? `${restaurants[2].name}` : '当地人气晚餐';
+
+                    // 动态构建 HTML 时间轴
+                    html += `
+                        <div class="bg-slate-900/50 border border-slate-700/40 rounded-2xl p-5 shadow-lg space-y-4">
+                            <div class="flex items-center justify-between pb-2.5 border-b border-slate-800">
+                                <span class="text-xs font-bold text-sky-400">Day ${d.day} 行程时间轴</span>
+                            </div>
+                            <div class="space-y-3.5 text-xs">
+                    `;
+
+                    // 根据节奏开始排布时间
+                    if (pace === 'rush') {
+                        html += `
+                            <!-- 特种兵模式：紧凑排布 -->
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-amber-400 shrink-0 pt-0.5">${config.times[0]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌅 晨起早餐：${bf}</div><div class="text-slate-400 text-[11px]">打包带走，边走边吃，迅速开启战斗！</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[1]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[0]?.name || '高德推荐地标'}</span><span class="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">评分: ${attractions[0]?.rating || '4.8'}</span></div><div class="text-indigo-400 text-[11px] font-mono">⏱️ 停留：${config.duration} ｜ 🚌 极速打卡</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[2]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[1]?.name || '高德推荐地标'}</span><span class="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">评分: ${attractions[1]?.rating || '4.7'}</span></div><div class="text-indigo-400 text-[11px] font-mono">⏱️ 停留：${config.duration}</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-emerald-400 shrink-0 pt-0.5">${config.times[3]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">☀️ 顺路午餐：${lc}</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[4]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[2]?.name || '高德推荐地标'}</span></div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[5]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[3]?.name || '高德推荐地标'}</span></div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-orange-400 shrink-0 pt-0.5">${config.times[6]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌙 丰盛晚餐：${dn}</div></div>
+                            </div>
+                        `;
+                    } else if (pace === 'relaxed') {
+                        html += `
+                            <!-- 轻松模式：睡到自然醒 -->
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-amber-400 shrink-0 pt-0.5">${config.times[0]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌅 晨起早餐：${bf}</div><div class="text-slate-400 text-[11px]">睡到自然醒，悠闲享受一顿丰盛的早茶/Brunch</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[1]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[0]?.name || '高德推荐地标'}</span><span class="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">评分: ${attractions[0]?.rating || '4.8'}</span></div><div class="text-indigo-400 text-[11px] font-mono">⏱️ 深度游：${config.duration} ｜ 🚌 交通：打车直达</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-emerald-400 shrink-0 pt-0.5">${config.times[2]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">☀️ 顺路午餐：${lc}</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[3]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[1]?.name || '高德推荐地标'}</span></div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-orange-400 shrink-0 pt-0.5">${config.times[4]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌙 丰盛晚餐：${dn}</div></div>
+                            </div>
+                        `;
+                    } else {
+                        // 适中模式
+                        html += `
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-amber-400 shrink-0 pt-0.5">${config.times[0]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌅 晨起早餐：${bf}</div><div class="text-slate-400 text-[11px]">起床洗漱，前往老字号吃一顿地道早餐</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[1]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[0]?.name || '高德推荐地标'}</span><span class="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">评分: ${attractions[0]?.rating || '4.8'}</span></div><div class="text-indigo-400 text-[11px] font-mono">⏱️ 游玩：${config.duration}</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-emerald-400 shrink-0 pt-0.5">${config.times[2]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">☀️ 顺路午餐：${lc}</div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[3]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[1]?.name || '高德推荐地标'}</span></div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/60 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-indigo-400 shrink-0 pt-0.5">${config.times[4]}</span>
+                                <div class="space-y-1 flex-1"><div class="flex items-center justify-between"><span class="font-semibold text-sm text-slate-100">📍 ${attractions[2]?.name || '高德推荐地标'}</span></div></div>
+                            </div>
+                            <div class="flex items-start gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl p-3">
+                                <span class="font-mono font-bold text-orange-400 shrink-0 pt-0.5">${config.times[5]}</span>
+                                <div class="space-y-1 flex-1"><div class="font-bold text-slate-200">🌙 丰盛晚餐：${dn}</div></div>
+                            </div>
+                        `;
+                    }
+
+                    html += `</div></div>`;
+                });
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
